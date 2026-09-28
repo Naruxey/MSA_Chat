@@ -16,7 +16,6 @@ import 'main.dart'
         buildAppBar,
         slideRoute,
         appRouteObserver;
-import 'fix_account_link_screen.dart';
 
 /// Max size (in encoded base64 characters) we'll accept for a profile
 /// photo. Firestore documents cap out at 1MiB total, so this keeps a
@@ -264,7 +263,6 @@ class _ProfileFormState extends State<ProfileForm> with RouteAware {
                         decoration: _decoration('Bio', Icons.info_outline),
                       ),
                       if (_userData != null) _readOnlyInfo(),
-                      if (_userData?['role'] == 'staff') _adminToolsSection(),
                       SizedBox(height: 16),
                       _darkModeToggle(),
                       SizedBox(height: 12),
@@ -386,68 +384,6 @@ class _ProfileFormState extends State<ProfileForm> with RouteAware {
             _infoRow('Role', role == 'staff' ? 'Staff' : 'Student'),
             _infoRow('Group', group),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _adminToolsSection() {
-    return Padding(
-      padding: EdgeInsets.only(top: 14),
-      child: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          boxShadow: appCardShadow(),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () {
-              Navigator.push(
-                context,
-                slideRoute(const FixAccountLinkScreen()),
-              );
-            },
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-              child: Row(
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(Icons.link, color: AppColors.primary, size: 20),
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Fix Account Link',
-                          style: TextStyle(
-                            color: AppColors.primaryDark,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                          ),
-                        ),
-                        Text(
-                          'Check or repair someone\'s ID login link',
-                          style: TextStyle(color: Colors.grey, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(Icons.chevron_right, color: Colors.grey),
-                ],
-              ),
-            ),
-          ),
         ),
       ),
     );
