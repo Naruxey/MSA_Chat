@@ -1,0 +1,448 @@
+import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'firebase_options.dart';
+import 'login_screen.dart';
+import 'group_screen.dart';
+import 'presence.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await ThemeController.instance.load();
+  runApp(const MyApp());
+}
+
+/// Holds the app's light/dark preference and keeps it in sync with
+/// SharedPreferences so it's remembered between app opens. [isDark] is a
+/// ValueNotifier so widgets (the AppBar toggle, MaterialApp itself) can
+/// listen and rebuild the moment it changes, without needing a full
+/// state-management package for just this one setting.
+class ThemeController {
+  ThemeController._();
+  static final ThemeController instance = ThemeController._();
+
+  static const _prefsKey = 'dark_mode_enabled';
+
+  final ValueNotifier<bool> isDark = ValueNotifier<bool>(false);
+
+  Future<void> load() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      isDark.value = prefs.getBool(_prefsKey) ?? false;
+    } catch (_) {
+      // If prefs aren't available yet, just start in light mode.
+    }
+  }
+
+  Future<void> toggle() async {
+    isDark.value = !isDark.value;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_prefsKey, isDark.value);
+    } catch (_) {
+      // Not saving the preference isn't critical — worst case it resets
+      // to light mode next launch.
+    }
+  }
+}
+
+// Shared theme colors used across the whole app, matched to the
+// MUHAB SKILLS ACADEMY logo (teal-blue + lime green). These are getters
+// rather than plain constants so every screen automatically follows
+// whichever mode ThemeController.instance.isDark is currently set to —
+// no need to thread a "isDark" flag through every widget.
+/// Lets any screen find out when the user navigates back to it (as opposed
+/// to when it's first created) — used by the Profile tab so it can refresh
+/// itself after you edit your profile from a *different* screen (e.g. via
+/// the staff group list) and then return, since IndexedStack normally keeps
+/// tabs alive forever and never rebuilds them on its own.
+final RouteObserver<PageRoute<dynamic>> appRouteObserver =
+    RouteObserver<PageRoute<dynamic>>();
+
+class AppColors {
+  static bool get _dark => ThemeController.instance.isDark.value;
+
+  // Brand teal — kept the same in both modes so the app bar / buttons
+  // still read as "MSA_Chat" regardless of theme.
+  static Color get primary => const Color(0xFF2E6B7A);
+
+  // Used everywhere as the main text/title color. On light backgrounds
+  // that's a near-black navy; on dark backgrounds it needs to flip to a
+  // light, high-contrast color instead.
+  static Color get primaryDark =>
+      _dark ? const Color(0xFFE9F2F2) : const Color(0xFF1F4B56);
+
+  static Color get accent => const Color(0xFF8DC63F); // lime green from the logo
+
+  static Color get background =>
+      _dark ? const Color(0xFF121B1C) : const Color(0xFFF7FAFA);
+
+  static Color get fieldFill =>
+      _dark ? const Color(0xFF1D2A2B) : const Color(0xFFFFFFFF);
+
+  static Color get fieldBorder =>
+      _dark ? const Color(0xFF32403F) : const Color(0xFFD8E2E2);
+
+  // Card surface — one step lighter than the page background so cards
+  // read as "raised" without needing a heavy shadow to prove it.
+  static Color get surface =>
+      _dark ? const Color(0xFF1A2627) : const Color(0xFFFFFFFF);
+
+  static Color get divider =>
+      _dark ? const Color(0xFF2A3738) : const Color(0xFFE7EEEE);
+
+  static LinearGradient get appBarGradient => LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [primary, const Color(0xFF224F5A)],
+      );
+}
+
+/// Consistent rounding used for cards, sheets and buttons app-wide so
+/// nothing looks like it wandered in from a different design.
+class AppRadius {
+  static const sm = 10.0;
+  static const md = 14.0;
+  static const lg = 20.0;
+}
+
+/// Soft, brand-tinted elevation used instead of Material's default grey
+/// shadow — keeps cards feeling like part of the same app rather than a
+/// generic list.
+List<BoxShadow> appCardShadow({double opacity = 0.06}) => [
+      BoxShadow(
+        color: AppColors.primary.withValues(alpha: opacity),
+        blurRadius: 18,
+        offset: const Offset(0, 6),
+      ),
+    ];
+
+/// Drop-in replacement for `AppBar` that gives every screen the same
+/// branded gradient + soft shadow instead of a flat color fill.
+PreferredSizeWidget buildAppBar({
+  required String title,
+  List<Widget>? actions,
+  Widget? leading,
+  bool centerTitle = false,
+}) {
+  return AppBar(
+    title: Text(title,
+        style: const TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.2)),
+    centerTitle: centerTitle,
+    actions: actions,
+    leading: leading,
+    foregroundColor: Colors.white,
+    backgroundColor: Colors.transparent,
+    elevation: 0,
+    flexibleSpace: Container(
+      decoration: BoxDecoration(
+        gradient: AppColors.appBarGradient,
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.28),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// App-wide page transition — a gentle fade + slide-up, used everywhere
+/// instead of the platform default so navigating between screens feels
+/// intentional rather than abrupt.
+Route<T> slideRoute<T>(Widget page) {
+  return PageRouteBuilder<T>(
+    transitionDuration: const Duration(milliseconds: 320),
+    reverseTransitionDuration: const Duration(milliseconds: 260),
+    pageBuilder: (context, animation, secondaryAnimation) => page,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+      return FadeTransition(
+        opacity: curved,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.04),
+            end: Offset.zero,
+          ).animate(curved),
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
+/// Small press-scale wrapper — buttons and tappable cards shrink slightly
+/// on press for a tactile, "native app" feel instead of a flat tap.
+class Pressable extends StatefulWidget {
+  final Widget child;
+  final VoidCallback? onTap;
+  final BorderRadius? borderRadius;
+
+  const Pressable({super.key, required this.child, this.onTap, this.borderRadius});
+
+  @override
+  State<Pressable> createState() => _PressableState();
+}
+
+class _PressableState extends State<Pressable> {
+  double _scale = 1.0;
+
+  void _setScale(double s) => setState(() => _scale = s);
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: widget.onTap == null ? null : (_) => _setScale(0.97),
+      onTapUp: widget.onTap == null ? null : (_) => _setScale(1.0),
+      onTapCancel: widget.onTap == null ? null : () => _setScale(1.0),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _scale,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: ThemeController.instance.isDark,
+      builder: (context, isDark, _) {
+        return MaterialApp(
+          title: 'MSA_Chat',
+          debugShowCheckedModeBanner: false,
+          navigatorObservers: [appRouteObserver],
+          theme: ThemeData(
+            scaffoldBackgroundColor: AppColors.background,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: AppColors.primary,
+              brightness: isDark ? Brightness.dark : Brightness.light,
+            ),
+            // Uses a font already installed on the device/browser instead of
+            // Flutter's default "Roboto", which tries to download itself from
+            // fonts.gstatic.com on web — and fails on restricted networks.
+            fontFamily: 'Arial',
+            useMaterial3: true,
+          ),
+          home: PresenceObserver(child: SplashScreen()),
+        );
+      },
+    );
+  }
+}
+
+/// Watches app lifecycle (foreground/background) and keeps the logged-in
+/// user's online status in Firestore in sync with it, app-wide.
+class PresenceObserver extends StatefulWidget {
+  final Widget child;
+
+  const PresenceObserver({super.key, required this.child});
+
+  @override
+  State<PresenceObserver> createState() => _PresenceObserverState();
+}
+
+class _PresenceObserverState extends State<PresenceObserver>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) setUserOnline(uid);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    if (state == AppLifecycleState.resumed) {
+      setUserOnline(uid);
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached ||
+        state == AppLifecycleState.inactive) {
+      setUserOffline(uid);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _fadeAnimation;
+  late final Animation<double> _scaleAnimation;
+  late final Animation<Offset> _textSlideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.65, curve: Curves.easeIn),
+    );
+    // Logo eases in with a gentle overshoot instead of just fading —
+    // reads as "arriving" rather than "appearing".
+    _scaleAnimation = Tween<double>(begin: 0.82, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
+    );
+    _textSlideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.35, 1.0, curve: Curves.easeOut),
+      ),
+    );
+    _controller.forward();
+    _goToNextScreen();
+  }
+
+  Future<void> _goToNextScreen() async {
+    await Future.delayed(const Duration(seconds: 3));
+    if (!mounted) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      Navigator.pushReplacement(
+        context,
+        slideRoute(const LoginScreen()),
+      );
+      return;
+    }
+
+    // Already logged in — go straight to their group
+    Navigator.pushReplacement(
+      context,
+      slideRoute(const GroupRouter()),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppColors.primary.withValues(alpha: ThemeController.instance.isDark.value ? 0.22 : 0.10),
+              AppColors.background,
+            ],
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FadeTransition(
+                opacity: _fadeAnimation,
+                child: ScaleTransition(
+                  scale: _scaleAnimation,
+                  child: Container(
+                    padding: EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.fieldFill,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.18),
+                          blurRadius: 30,
+                          spreadRadius: 4,
+                        ),
+                      ],
+                    ),
+                    child: Image.asset('assets/images/logo.png', width: 200),
+                  ),
+                ),
+              ),
+              SizedBox(height: 22),
+              SlideTransition(
+                position: _textSlideAnimation,
+                child: FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: Text(
+                    'MSA_Chat',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primaryDark,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: 6),
+              SlideTransition(
+                position: _textSlideAnimation,
+                child: FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: Text(
+                    'Muhab Skills Academy',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: 36),
+              FadeTransition(
+                opacity: _fadeAnimation,
+                child: SizedBox(
+                  width: 26,
+                  height: 26,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.4,
+                    color: AppColors.accent,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
