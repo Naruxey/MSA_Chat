@@ -3,8 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'app_constants.dart';
+import 'admin_chat_reader_screen.dart';
 import 'app_notify.dart';
-import 'main.dart' show AppColors, AppRadius, appCardShadow, buildAppBar;
+import 'main.dart' show AppColors, AppRadius, appCardShadow, buildAppBar, slideRoute;
 import 'profile_screen.dart' show buildUserAvatar;
 
 /// The groups a student can be moved between. Kept in sync with the list
@@ -629,6 +630,37 @@ class _UserRecordScreenState extends State<UserRecordScreen> {
                                           ? AppColors.primary
                                           : Colors.redAccent,
                                     ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed: () => Navigator.push(
+                                    context,
+                                    slideRoute(
+                                      AdminChatReaderScreen(
+                                        onlyUserId: widget.uid,
+                                        onlyUserName:
+                                            (_userData?['name'] as String?) ?? 'This user',
+                                      ),
+                                    ),
+                                  ),
+                                  icon: Icon(Icons.forum_outlined, color: AppColors.primary),
+                                  label: Text(
+                                    'View Chats',
+                                    style: TextStyle(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    side: BorderSide(color: AppColors.primary),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),

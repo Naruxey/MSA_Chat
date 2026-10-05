@@ -5,6 +5,7 @@ import 'main.dart' show AppColors, ThemeController, slideRoute;
 import 'virtual_keyboard.dart';
 import 'app_notify.dart';
 import 'login_screen.dart';
+import 'privacy_notice_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -26,6 +27,7 @@ class _RegisterScreenState extends State<RegisterScreen>
   String? _level; // 'beginners' | 'intermediate' | 'advance' (students only)
 
   bool _isLoading = false;
+  bool _agreedToPrivacy = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
@@ -118,6 +120,14 @@ class _RegisterScreenState extends State<RegisterScreen>
       return;
     }
     if (!_formKey.currentState!.validate()) return;
+    if (!_agreedToPrivacy) {
+      showAppNotification(
+        context,
+        message: 'Please read and accept the privacy notice',
+        isError: true,
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -456,7 +466,52 @@ class _RegisterScreenState extends State<RegisterScreen>
                                 return null;
                               },
                             ),
-                            SizedBox(height: 26),
+                            SizedBox(height: 18),
+
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Checkbox(
+                                  value: _agreedToPrivacy,
+                                  activeColor: AppColors.primary,
+                                  onChanged: _isLoading
+                                      ? null
+                                      : (v) => setState(
+                                            () => _agreedToPrivacy = v ?? false,
+                                          ),
+                                ),
+                                Expanded(
+                                  child: Wrap(
+                                    crossAxisAlignment: WrapCrossAlignment.center,
+                                    children: [
+                                      Text(
+                                        'I have read and accept the ',
+                                        style: TextStyle(
+                                          color: Colors.grey,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                      GestureDetector(
+                                        onTap: () => Navigator.push(
+                                          context,
+                                          slideRoute(const PrivacyNoticeScreen()),
+                                        ),
+                                        child: Text(
+                                          'Privacy Notice',
+                                          style: TextStyle(
+                                            color: AppColors.primary,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                            decoration: TextDecoration.underline,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 12),
 
                             ElevatedButton(
                               onPressed: _isLoading ? null : _register,

@@ -6,7 +6,6 @@ import 'main.dart' show AppColors, ThemeController, slideRoute, Pressable;
 import 'virtual_keyboard.dart';
 import 'app_notify.dart';
 import 'register_screen.dart';
-import 'group_screen.dart';
 import 'post_login_navigation.dart';
 import 'app_constants.dart';
 

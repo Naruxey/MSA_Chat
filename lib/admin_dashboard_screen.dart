@@ -6,6 +6,8 @@ import 'main.dart' show AppColors, AppRadius, appCardShadow, buildAppBar, slideR
 import 'login_screen.dart';
 import 'presence.dart';
 import 'account_list_screen.dart';
+import 'admin_chat_reader_screen.dart';
+import 'admin_activity_log_screen.dart';
 import 'fix_account_link_screen.dart';
 import 'broadcasts_screen.dart';
 import 'send_notification_screen.dart';
@@ -89,6 +91,28 @@ class AdminDashboardScreen extends StatelessWidget {
               onTap: () => Navigator.push(
                 context,
                 slideRoute(const FixAccountLinkScreen()),
+              ),
+            ),
+            const SizedBox(height: 24),
+            _SectionLabel('Conversations'),
+            const SizedBox(height: 10),
+            _DashboardTile(
+              icon: Icons.forum_outlined,
+              title: 'Read Chats',
+              subtitle: 'View any conversation (read-only)',
+              onTap: () => Navigator.push(
+                context,
+                slideRoute(const AdminChatReaderScreen()),
+              ),
+            ),
+            const SizedBox(height: 12),
+            _DashboardTile(
+              icon: Icons.history_rounded,
+              title: 'Activity Log',
+              subtitle: 'See which conversations were opened, and when',
+              onTap: () => Navigator.push(
+                context,
+                slideRoute(const AdminActivityLogScreen()),
               ),
             ),
             const SizedBox(height: 24),
