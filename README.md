@@ -10,19 +10,27 @@
 
 ## 
 
-!\[Login](screenshots/login.png)
+<p align="center">
 
 
 
-!\[Chats](screenshots/chats.png)
+&#x20; <img src="screenshots/login.png" width="200">
 
 
 
-!\[Conversation](screenshots/conversation.png)
+&#x20; <img src="screenshots/chats.png" width="200">
 
 
 
-!\[Admin dashboard](screenshots/admin-dashboard.png)
+&#x20; <img src="screenshots/conversation.png" width="200">
+
+
+
+&#x20; <img src="screenshots/admin-dashboard.png" width="200">
+
+
+
+</p>
 
 
 
@@ -31,6 +39,7 @@
 
 
 \### For everyone
+
 
 
 \\\* \\\*\\\*ID-based login\\\*\\\* using academy IDs (MSA / FAC format)
@@ -80,22 +89,22 @@ A single admin account, created outside the public sign-up flow.
 ```
 lib/
   main.dart                      App entry, theme, shared UI helpers
-  login\\\\\\\_screen.dart              ID-based login
-  register\\\\\\\_screen.dart           Sign-up
-  role\\\\\\\_service.dart              Decides student / staff / admin
-  post\\\\\\\_login\\\\\\\_navigation.dart     Sends each role to the right screen
-  chats\\\\\\\_list\\\\\\\_screen.dart         Chat list
-  chat\\\\\\\_screen.dart               1-on-1 chat
-  group\\\\\\\_screen.dart              Group member lists
-  profile\\\\\\\_screen.dart            Profiles
-  broadcasts\\\\\\\_screen.dart         Announcements
-  send\\\\\\\_notification\\\\\\\_screen.dart  Send an announcement
-  admin\\\\\\\_dashboard\\\\\\\_screen.dart    Admin home
-  account\\\\\\\_list\\\\\\\_screen.dart       Searchable account lists
-  user\\\\\\\_record\\\\\\\_screen.dart        View / edit one account
-  fix\\\\\\\_account\\\\\\\_link\\\\\\\_screen.dart   Repair ID links
-  admin\\\\\\\_chat\\\\\\\_reader\\\\\\\_screen.dart  Read-only chat viewer
-  admin\\\\\\\_activity\\\\\\\_log\\\\\\\_screen.dart Audit log viewer
+  login\\\\\\\\\\\\\\\_screen.dart              ID-based login
+  register\\\\\\\\\\\\\\\_screen.dart           Sign-up
+  role\\\\\\\\\\\\\\\_service.dart              Decides student / staff / admin
+  post\\\\\\\\\\\\\\\_login\\\\\\\\\\\\\\\_navigation.dart     Sends each role to the right screen
+  chats\\\\\\\\\\\\\\\_list\\\\\\\\\\\\\\\_screen.dart         Chat list
+  chat\\\\\\\\\\\\\\\_screen.dart               1-on-1 chat
+  group\\\\\\\\\\\\\\\_screen.dart              Group member lists
+  profile\\\\\\\\\\\\\\\_screen.dart            Profiles
+  broadcasts\\\\\\\\\\\\\\\_screen.dart         Announcements
+  send\\\\\\\\\\\\\\\_notification\\\\\\\\\\\\\\\_screen.dart  Send an announcement
+  admin\\\\\\\\\\\\\\\_dashboard\\\\\\\\\\\\\\\_screen.dart    Admin home
+  account\\\\\\\\\\\\\\\_list\\\\\\\\\\\\\\\_screen.dart       Searchable account lists
+  user\\\\\\\\\\\\\\\_record\\\\\\\\\\\\\\\_screen.dart        View / edit one account
+  fix\\\\\\\\\\\\\\\_account\\\\\\\\\\\\\\\_link\\\\\\\\\\\\\\\_screen.dart   Repair ID links
+  admin\\\\\\\\\\\\\\\_chat\\\\\\\\\\\\\\\_reader\\\\\\\\\\\\\\\_screen.dart  Read-only chat viewer
+  admin\\\\\\\\\\\\\\\_activity\\\\\\\\\\\\\\\_log\\\\\\\\\\\\\\\_screen.dart Audit log viewer
 firestore.rules                  Security rules
 ```
 
@@ -103,11 +112,12 @@ firestore.rules                  Security rules
 
 1. Install \\\[Flutter](https://docs.flutter.dev/get-started/install).
 2. Create a Firebase project and enable \\\*\\\*Authentication\\\*\\\* (Email/Password) and \\\*\\\*Cloud Firestore\\\*\\\*.
-3. Connect the app to your project with `flutterfire configure`. This regenerates `lib/firebase\\\\\\\_options.dart`.
+3. Connect the app to your project with `flutterfire configure`. This regenerates `lib/firebase\\\\\\\\\\\\\\\_options.dart`.
 4. Create your admin account in Firebase Authentication and copy its UID into \\\*\\\*both\\\*\\\*:
 
-   \\\* `lib/app\\\\\\\_constants.dart` (`adminUid`)
-   \\\* the `isAdmin()` function in `firestore.rules`
+   \\\* `lib/app\\\\\\\\\\\\\\\_constants.dart` (`adminUid`)
+\\\* the `isAdmin()` function in `firestore.rules`
+
 5. Publish `firestore.rules` in the Firebase console.
 6. Run `flutter pub get`, then `flutter run -d chrome` (or pick an Android device).
 
@@ -126,6 +136,4 @@ These are deliberate trade-offs for a project that runs on Firebase's free plan:
 \\\* Privacy notice screen at sign-up
 \\\* Splitting the largest screens into smaller files
 \\\* Automated tests for the security rules
-
-
 
