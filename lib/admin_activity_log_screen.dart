@@ -72,7 +72,7 @@ class AdminActivityLogScreen extends StatelessWidget {
           return ListView.separated(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             itemCount: docs.length + (hitLimit ? 1 : 0),
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            separatorBuilder: (_, _) => const SizedBox(height: 10),
             itemBuilder: (context, index) {
               if (index == docs.length) {
                 return Padding(

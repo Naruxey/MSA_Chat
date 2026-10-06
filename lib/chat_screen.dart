@@ -5,10 +5,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
-import 'main.dart' show AppColors, AppRadius, appCardShadow, buildAppBar, slideRoute, Pressable;
+import 'main.dart' show AppColors, appCardShadow, slideRoute, Pressable;
 import 'virtual_keyboard.dart';
 import 'app_notify.dart';
 import 'profile_screen.dart' show UserProfileViewScreen;
+import 'chat_media_screens.dart';
+import 'chat_message_bubble.dart';
+import 'chat_input_widgets.dart';
 
 /// Builds a stable, deterministic chat ID for any pair of users — the same
 /// two people always land in the same chat document, no matter who starts
@@ -71,8 +74,10 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    _chatDocStream =
-        FirebaseFirestore.instance.collection('chats').doc(_chatId).snapshots();
+    _chatDocStream = FirebaseFirestore.instance
+        .collection('chats')
+        .doc(_chatId)
+        .snapshots();
     _otherUserDocStream = FirebaseFirestore.instance
         .collection('users')
         .doc(widget.otherUserId)
@@ -177,7 +182,9 @@ class _ChatScreenState extends State<ChatScreen> {
       }
 
       final imageBase64 = base64Encode(bytes);
-      final chatRef = FirebaseFirestore.instance.collection('chats').doc(_chatId);
+      final chatRef = FirebaseFirestore.instance
+          .collection('chats')
+          .doc(_chatId);
 
       final currentUserDoc = await FirebaseFirestore.instance
           .collection('users')
@@ -223,7 +230,11 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     } catch (_) {
       if (mounted) {
-        showAppNotification(context, message: 'Could not send photo.', isError: true);
+        showAppNotification(
+          context,
+          message: 'Could not send photo.',
+          isError: true,
+        );
       }
       // Upload failed — nothing was sent, so nothing to restore.
     } finally {
@@ -254,7 +265,9 @@ class _ChatScreenState extends State<ChatScreen> {
     _setTyping(false);
 
     try {
-      final chatRef = FirebaseFirestore.instance.collection('chats').doc(_chatId);
+      final chatRef = FirebaseFirestore.instance
+          .collection('chats')
+          .doc(_chatId);
       final currentUserDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(_currentUserId)
@@ -360,7 +373,11 @@ class _ChatScreenState extends State<ChatScreen> {
                 title: Text(isPinned ? 'Unpin' : 'Pin'),
                 onTap: () {
                   Navigator.pop(sheetContext);
-                  _togglePinned(messageId: messageId, text: text, senderName: senderName);
+                  _togglePinned(
+                    messageId: messageId,
+                    text: text,
+                    senderName: senderName,
+                  );
                 },
               ),
               if (isMine && !isImage)
@@ -375,7 +392,10 @@ class _ChatScreenState extends State<ChatScreen> {
               if (isMine)
                 ListTile(
                   leading: Icon(Icons.delete_outline, color: Colors.redAccent),
-                  title: Text('Delete', style: TextStyle(color: Colors.redAccent)),
+                  title: Text(
+                    'Delete',
+                    style: TextStyle(color: Colors.redAccent),
+                  ),
                   onTap: () async {
                     Navigator.pop(sheetContext);
                     await _deleteMessage(messageId);
@@ -396,8 +416,11 @@ class _ChatScreenState extends State<ChatScreen> {
           .collection('messages')
           .doc(messageId)
           .update({'deleted': true, 'text': ''});
-    } catch (_) {
-      // Not critical to surface — the message just won't delete this time.
+    } catch (e) {
+      debugPrint('Delete failed: $e');
+      if (mounted) {
+        showAppNotification(context, message: 'Could not delete message.', isError: true);
+      }
     }
   }
 
@@ -408,21 +431,13 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  String _formatTime(Timestamp? ts) {
-    if (ts == null) return '';
-    final dt = ts.toDate();
-    final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
-    final minute = dt.minute.toString().padLeft(2, '0');
-    final period = dt.hour >= 12 ? 'PM' : 'AM';
-    return '$hour:$minute $period';
-  }
-
   String _formatLastSeen(Timestamp? ts) {
     if (ts == null) return '';
     final dt = ts.toDate();
     final now = DateTime.now();
-    final isToday = dt.year == now.year && dt.month == now.month && dt.day == now.day;
-    final time = _formatTime(ts);
+    final isToday =
+        dt.year == now.year && dt.month == now.month && dt.day == now.day;
+    final time = formatChatTime(ts);
     if (isToday) return 'Last seen today at $time';
     return 'Last seen ${dt.day}/${dt.month}/${dt.year}';
   }
@@ -443,7 +458,11 @@ class _ChatScreenState extends State<ChatScreen> {
         if (otherIsTyping) {
           return Text(
             'typing...',
-            style: TextStyle(fontSize: 12, color: Colors.white70, fontStyle: FontStyle.italic),
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.white70,
+              fontStyle: FontStyle.italic,
+            ),
           );
         }
 
@@ -537,16 +556,18 @@ class _ChatScreenState extends State<ChatScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: kQuickReactions
-                  .map((emoji) => Pressable(
-                        onTap: () {
-                          Navigator.pop(sheetContext);
-                          _toggleReaction(messageId, emoji);
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(4),
-                          child: Text(emoji, style: TextStyle(fontSize: 26)),
-                        ),
-                      ))
+                  .map(
+                    (emoji) => Pressable(
+                      onTap: () {
+                        Navigator.pop(sheetContext);
+                        _toggleReaction(messageId, emoji);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: Text(emoji, style: TextStyle(fontSize: 26)),
+                      ),
+                    ),
+                  )
                   .toList(),
             ),
           ),
@@ -561,7 +582,9 @@ class _ChatScreenState extends State<ChatScreen> {
       _replyingToText = null;
       _replyingToSenderName = null;
       _messageController.text = currentText;
-      _messageController.selection = TextSelection.collapsed(offset: currentText.length);
+      _messageController.selection = TextSelection.collapsed(
+        offset: currentText.length,
+      );
     });
     _showKeyboardNow();
   }
@@ -590,7 +613,11 @@ class _ChatScreenState extends State<ChatScreen> {
           .update({'text': text, 'edited': true});
     } catch (_) {
       if (mounted) {
-        showAppNotification(context, message: 'Could not save edit.', isError: true);
+        showAppNotification(
+          context,
+          message: 'Could not save edit.',
+          isError: true,
+        );
       }
     }
   }
@@ -606,7 +633,8 @@ class _ChatScreenState extends State<ChatScreen> {
     final chatRef = FirebaseFirestore.instance.collection('chats').doc(_chatId);
     try {
       final snap = await chatRef.get();
-      final currentPinned = snap.data()?['pinnedMessage'] as Map<String, dynamic>?;
+      final currentPinned =
+          snap.data()?['pinnedMessage'] as Map<String, dynamic>?;
       if (currentPinned != null && currentPinned['id'] == messageId) {
         await chatRef.update({'pinnedMessage': FieldValue.delete()});
       } else {
@@ -620,7 +648,11 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     } catch (_) {
       if (mounted) {
-        showAppNotification(context, message: 'Could not update pin.', isError: true);
+        showAppNotification(
+          context,
+          message: 'Could not update pin.',
+          isError: true,
+        );
       }
     }
   }
@@ -651,10 +683,12 @@ class _ChatScreenState extends State<ChatScreen> {
               onTap: () {
                 Navigator.push(
                   context,
-                  slideRoute(UserProfileViewScreen(
-                    userId: widget.otherUserId,
-                    fallbackName: widget.otherUserName,
-                  )),
+                  slideRoute(
+                    UserProfileViewScreen(
+                      userId: widget.otherUserId,
+                      fallbackName: widget.otherUserName,
+                    ),
+                  ),
                 );
               },
               // The chat only knows the other user's name/id from
@@ -663,7 +697,8 @@ class _ChatScreenState extends State<ChatScreen> {
               child: StreamBuilder<DocumentSnapshot>(
                 stream: _otherUserDocStream,
                 builder: (context, userSnapshot) {
-                  final userData = userSnapshot.data?.data() as Map<String, dynamic>?;
+                  final userData =
+                      userSnapshot.data?.data() as Map<String, dynamic>?;
                   final photoBase64 = userData?['photoBase64'] as String?;
                   if (photoBase64 != null && photoBase64.isNotEmpty) {
                     try {
@@ -682,8 +717,10 @@ class _ChatScreenState extends State<ChatScreen> {
                       widget.otherUserName.isNotEmpty
                           ? widget.otherUserName[0].toUpperCase()
                           : '?',
-                      style:
-                          TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   );
                 },
@@ -713,7 +750,7 @@ class _ChatScreenState extends State<ChatScreen> {
             onPressed: () {
               Navigator.push(
                 context,
-                slideRoute(_ChatMediaGalleryScreen(chatId: _chatId)),
+                slideRoute(ChatMediaGalleryScreen(chatId: _chatId)),
               );
             },
           ),
@@ -737,17 +774,25 @@ class _ChatScreenState extends State<ChatScreen> {
                   style: TextStyle(color: AppColors.primaryDark),
                   decoration: InputDecoration(
                     hintText: 'Search in this chat...',
-                    prefixIcon: Icon(Icons.search, color: AppColors.primary, size: 20),
+                    prefixIcon: Icon(
+                      Icons.search,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
                     isDense: true,
                     filled: true,
                     fillColor: AppColors.background,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20),
                       borderSide: BorderSide(color: AppColors.fieldBorder),
                     ),
                   ),
-                  onChanged: (v) => setState(() => _searchQuery = v.trim().toLowerCase()),
+                  onChanged: (v) =>
+                      setState(() => _searchQuery = v.trim().toLowerCase()),
                 ),
               ),
             StreamBuilder<DocumentSnapshot>(
@@ -756,8 +801,10 @@ class _ChatScreenState extends State<ChatScreen> {
                 if (chatSnapshot.data == null || !chatSnapshot.data!.exists) {
                   return SizedBox.shrink();
                 }
-                final chatData = chatSnapshot.data!.data() as Map<String, dynamic>;
-                final pinned = chatData['pinnedMessage'] as Map<String, dynamic>?;
+                final chatData =
+                    chatSnapshot.data!.data() as Map<String, dynamic>;
+                final pinned =
+                    chatData['pinnedMessage'] as Map<String, dynamic>?;
                 if (pinned == null) return SizedBox.shrink();
                 return Pressable(
                   onTap: () => _togglePinned(
@@ -771,7 +818,11 @@ class _ChatScreenState extends State<ChatScreen> {
                     color: AppColors.primary.withValues(alpha: 0.08),
                     child: Row(
                       children: [
-                        Icon(Icons.push_pin, size: 16, color: AppColors.primary),
+                        Icon(
+                          Icons.push_pin,
+                          size: 16,
+                          color: AppColors.primary,
+                        ),
                         SizedBox(width: 8),
                         Expanded(
                           child: RichText(
@@ -789,7 +840,10 @@ class _ChatScreenState extends State<ChatScreen> {
                                 ),
                                 TextSpan(
                                   text: pinned['text'] as String? ?? '',
-                                  style: TextStyle(fontSize: 12, color: AppColors.primaryDark),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.primaryDark,
+                                  ),
                                 ),
                               ],
                             ),
@@ -811,532 +865,230 @@ class _ChatScreenState extends State<ChatScreen> {
                   builder: (context, chatSnapshot) {
                     Timestamp? otherUserReadAt;
                     String? pinnedMessageId;
-                    if (chatSnapshot.data != null && chatSnapshot.data!.exists) {
+                    if (chatSnapshot.data != null &&
+                        chatSnapshot.data!.exists) {
                       final chatData =
                           chatSnapshot.data!.data() as Map<String, dynamic>;
-                      final readMap = chatData['lastReadAt'] as Map<String, dynamic>?;
-                      otherUserReadAt = readMap?[widget.otherUserId] as Timestamp?;
-                      final pinnedMap = chatData['pinnedMessage'] as Map<String, dynamic>?;
+                      final readMap =
+                          chatData['lastReadAt'] as Map<String, dynamic>?;
+                      otherUserReadAt =
+                          readMap?[widget.otherUserId] as Timestamp?;
+                      final pinnedMap =
+                          chatData['pinnedMessage'] as Map<String, dynamic>?;
                       pinnedMessageId = pinnedMap?['id'] as String?;
                     }
 
                     return StreamBuilder<QuerySnapshot>(
-                  stream: _messagesStream,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return Center(
-                        child: CircularProgressIndicator(color: AppColors.primary),
-                      );
-                    }
+                      stream: _messagesStream,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.primary,
+                            ),
+                          );
+                        }
 
-                    if (snapshot.hasError) {
-                      return Center(
-                        child: Text(
-                          'Could not load messages: ${snapshot.error}',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      );
-                    }
+                        if (snapshot.hasError) {
+                          return Center(
+                            child: Text(
+                              'Could not load messages: ${snapshot.error}',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          );
+                        }
 
-                    var docs = snapshot.data?.docs ?? [];
+                        var docs = snapshot.data?.docs ?? [];
 
-                    // If the newest message just arrived from the other
-                    // person while I'm actively looking at this screen,
-                    // mark it read right away instead of waiting for my
-                    // next visit.
-                    if (docs.isNotEmpty && docs.length != _markedReadForDocCount) {
-                      final newest = docs.first.data() as Map<String, dynamic>;
-                      if (newest['senderId'] != _currentUserId) {
-                        _markedReadForDocCount = docs.length;
-                        _markAsRead();
-                      }
-                    }
-
-                    if (_searchQuery.isNotEmpty) {
-                      docs = docs.where((doc) {
-                        final data = doc.data() as Map<String, dynamic>;
-                        if (data['deleted'] == true) return false;
-                        final text = (data['text'] as String? ?? '').toLowerCase();
-                        return text.contains(_searchQuery);
-                      }).toList();
-                    }
-
-                    if (docs.isEmpty) {
-                      final noResults = _searchQuery.isNotEmpty;
-                      return Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(24),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                  noResults
-                                      ? Icons.search_off
-                                      : Icons.chat_bubble_outline,
-                                  size: 56, color: AppColors.primary.withValues(alpha: 0.3)),
-                              SizedBox(height: 12),
-                              Text(
-                                noResults
-                                    ? 'No messages match "$_searchQuery"'
-                                    : 'Say hi to ${widget.otherUserName} 👋',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(color: Colors.grey, fontSize: 14),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }
-
-                    return ListView.builder(
-                      controller: _scrollController,
-                      reverse: true,
-                      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      itemCount: docs.length,
-                      itemBuilder: (context, index) {
-                        final doc = docs[index];
-                        final data = doc.data() as Map<String, dynamic>;
-                        final isDeleted = data['deleted'] == true;
-                        final text = isDeleted ? '' : (data['text'] ?? '');
-                        final imageBase64 = isDeleted ? null : data['imageBase64'] as String?;
-                        Uint8List? imageBytes;
-                        if (imageBase64 != null && imageBase64.isNotEmpty) {
-                          try {
-                            imageBytes = base64Decode(imageBase64);
-                          } catch (_) {
-                            imageBytes = null;
+                        // If the newest message just arrived from the other
+                        // person while I'm actively looking at this screen,
+                        // mark it read right away instead of waiting for my
+                        // next visit.
+                        if (docs.isNotEmpty &&
+                            docs.length != _markedReadForDocCount) {
+                          final newest =
+                              docs.first.data() as Map<String, dynamic>;
+                          if (newest['senderId'] != _currentUserId) {
+                            _markedReadForDocCount = docs.length;
+                            _markAsRead();
                           }
                         }
-                        final senderId = data['senderId'] ?? '';
-                        final sentAt = data['sentAt'] as Timestamp?;
-                        final isMine = senderId == _currentUserId;
-                        final isRead = isMine &&
-                            sentAt != null &&
-                            otherUserReadAt != null &&
-                            otherUserReadAt.compareTo(sentAt) >= 0;
-                        final replyToText = data['replyToText'] as String?;
-                        final replyToSenderName = data['replyToSenderName'] as String?;
-                        final replyActionText = imageBytes != null ? '📷 Photo' : text;
-                        final reactions =
-                            (data['reactions'] as Map<String, dynamic>?) ?? {};
-                        final isEdited = data['edited'] == true;
-                        final isPinnedMsg = pinnedMessageId == doc.id;
 
-                        // Group reactions by emoji so identical reactions
-                        // from different people collapse into one chip
-                        // with a count, instead of one chip per person.
-                        final Map<String, int> reactionCounts = {};
-                        bool iReacted = false;
-                        String? myReaction;
-                        reactions.forEach((uid, emoji) {
-                          reactionCounts[emoji as String] =
-                              (reactionCounts[emoji] ?? 0) + 1;
-                          if (uid == _currentUserId) {
-                            iReacted = true;
-                            myReaction = emoji;
-                          }
-                        });
+                        if (_searchQuery.isNotEmpty) {
+                          docs = docs.where((doc) {
+                            final data = doc.data() as Map<String, dynamic>;
+                            if (data['deleted'] == true) return false;
+                            final text = (data['text'] as String? ?? '')
+                                .toLowerCase();
+                            return text.contains(_searchQuery);
+                          }).toList();
+                        }
 
-                        return GestureDetector(
-                          onLongPress: isDeleted
-                              ? null
-                              : () => _showMessageActions(
-                                    messageId: doc.id,
-                                    isMine: isMine,
-                                    text: replyActionText,
-                                    senderName: isMine ? 'You' : widget.otherUserName,
-                                    isImage: imageBytes != null,
-                                    isPinned: isPinnedMsg,
-                                  ),
-                          onDoubleTap: isDeleted
-                              ? null
-                              : () => _toggleReaction(doc.id, '❤️'),
-                          child: Align(
-                          alignment:
-                              isMine ? Alignment.centerRight : Alignment.centerLeft,
-                          child: Container(
-                            margin: EdgeInsets.symmetric(vertical: 4),
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 10),
-                            constraints: BoxConstraints(
-                              maxWidth: MediaQuery.of(context).size.width * 0.75,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isMine ? AppColors.primary : AppColors.fieldFill,
-                              borderRadius: BorderRadius.only(
-                                topLeft: Radius.circular(16),
-                                topRight: Radius.circular(16),
-                                bottomLeft: Radius.circular(isMine ? 16 : 4),
-                                bottomRight: Radius.circular(isMine ? 4 : 16),
-                              ),
-                              border: isMine
-                                  ? null
-                                  : Border.all(color: AppColors.fieldBorder),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: (isMine ? AppColors.primary : Colors.black)
-                                      .withValues(alpha: 0.08),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (replyToText != null && !isDeleted)
-                                  Container(
-                                    margin: EdgeInsets.only(bottom: 6),
-                                    padding: EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: isMine
-                                          ? Colors.white.withValues(alpha: 0.15)
-                                          : AppColors.background,
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border(
-                                        left: BorderSide(
-                                          color: isMine
-                                              ? Colors.white.withValues(alpha: 0.6)
-                                              : AppColors.primary,
-                                          width: 3,
-                                        ),
-                                      ),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          replyToSenderName ?? '',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                            color: isMine
-                                                ? Colors.white
-                                                : AppColors.primary,
-                                          ),
-                                        ),
-                                        Text(
-                                          replyToText,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: isMine
-                                                ? Colors.white70
-                                                : Colors.grey,
-                                          ),
-                                        ),
-                                      ],
+                        if (docs.isEmpty) {
+                          final noResults = _searchQuery.isNotEmpty;
+                          return Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(24),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    noResults
+                                        ? Icons.search_off
+                                        : Icons.chat_bubble_outline,
+                                    size: 56,
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.3,
                                     ),
                                   ),
-                                if (imageBytes != null)
-                                  GestureDetector(
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        slideRoute(_FullscreenImageViewer(imageBytes: imageBytes!)),
-                                      );
-                                    },
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: Image.memory(
-                                        imageBytes,
-                                        width: 200,
-                                        height: 200,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stack) => SizedBox(
-                                          width: 200,
-                                          height: 200,
-                                          child: Center(child: Icon(Icons.broken_image_outlined)),
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                else
+                                  SizedBox(height: 12),
                                   Text(
-                                    isDeleted ? 'This message was deleted' : text,
+                                    noResults
+                                        ? 'No messages match "$_searchQuery"'
+                                        : 'Say hi to ${widget.otherUserName} 👋',
+                                    textAlign: TextAlign.center,
                                     style: TextStyle(
-                                      color: isDeleted
-                                          ? (isMine
-                                              ? Colors.white.withValues(alpha: 0.7)
-                                              : Colors.grey)
-                                          : (isMine ? Colors.white : AppColors.primaryDark),
-                                      fontSize: 15,
-                                      fontStyle:
-                                          isDeleted ? FontStyle.italic : FontStyle.normal,
+                                      color: Colors.grey,
+                                      fontSize: 14,
                                     ),
                                   ),
-                                SizedBox(height: 4),
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    if (isEdited && !isDeleted) ...[
-                                      Text(
-                                        'edited · ',
-                                        style: TextStyle(
-                                          color: isMine
-                                              ? Colors.white.withValues(alpha: 0.6)
-                                              : Colors.grey,
-                                          fontSize: 10,
-                                          fontStyle: FontStyle.italic,
-                                        ),
-                                      ),
-                                    ],
-                                    Text(
-                                      _formatTime(sentAt),
-                                      style: TextStyle(
-                                        color: isMine
-                                            ? Colors.white.withValues(alpha: 0.75)
-                                            : Colors.grey,
-                                        fontSize: 10,
-                                      ),
-                                    ),
-                                    if (isMine && !isDeleted) ...[
-                                      SizedBox(width: 4),
-                                      Icon(
-                                        isRead ? Icons.done_all : Icons.done,
-                                        size: 14,
-                                        color: isRead
-                                            ? Color(0xFF63D4FF)
-                                            : Colors.white.withValues(alpha: 0.75),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                                if (reactionCounts.isNotEmpty && !isDeleted)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 4),
-                                    child: Wrap(
-                                      spacing: 4,
-                                      children: reactionCounts.entries.map((e) {
-                                        final mine = iReacted && myReaction == e.key;
-                                        return Pressable(
-                                          onTap: () => _toggleReaction(doc.id, e.key),
-                                          child: Container(
-                                            padding: EdgeInsets.symmetric(
-                                                horizontal: 7, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: mine
-                                                  ? AppColors.accent.withValues(alpha: 0.25)
-                                                  : (isMine
-                                                      ? Colors.white.withValues(alpha: 0.18)
-                                                      : AppColors.background),
-                                              borderRadius: BorderRadius.circular(12),
-                                              border: mine
-                                                  ? Border.all(color: AppColors.accent, width: 1)
-                                                  : null,
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Text(e.key, style: TextStyle(fontSize: 12)),
-                                                if (e.value > 1) ...[
-                                                  SizedBox(width: 3),
-                                                  Text(
-                                                    '${e.value}',
-                                                    style: TextStyle(
-                                                      fontSize: 10,
-                                                      fontWeight: FontWeight.w600,
-                                                      color: isMine
-                                                          ? Colors.white
-                                                          : AppColors.primaryDark,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ],
-                                            ),
-                                          ),
-                                        );
-                                      }).toList(),
-                                    ),
-                                  ),
-                              ],
+                                ],
+                              ),
                             ),
+                          );
+                        }
+
+                        return ListView.builder(
+                          controller: _scrollController,
+                          reverse: true,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
                           ),
-                          ),
+                          itemCount: docs.length,
+                          itemBuilder: (context, index) {
+                            final doc = docs[index];
+                            final data = doc.data() as Map<String, dynamic>;
+                            final isDeleted = data['deleted'] == true;
+                            final text = isDeleted ? '' : (data['text'] ?? '');
+                            final imageBase64 = isDeleted
+                                ? null
+                                : data['imageBase64'] as String?;
+                            Uint8List? imageBytes;
+                            if (imageBase64 != null && imageBase64.isNotEmpty) {
+                              try {
+                                imageBytes = base64Decode(imageBase64);
+                              } catch (_) {
+                                imageBytes = null;
+                              }
+                            }
+                            final senderId = data['senderId'] ?? '';
+                            final sentAt = data['sentAt'] as Timestamp?;
+                            final isMine = senderId == _currentUserId;
+                            final isRead =
+                                isMine &&
+                                sentAt != null &&
+                                otherUserReadAt != null &&
+                                otherUserReadAt.compareTo(sentAt) >= 0;
+                            final replyToText = data['replyToText'] as String?;
+                            final replyToSenderName =
+                                data['replyToSenderName'] as String?;
+                            final replyActionText = imageBytes != null
+                                ? '📷 Photo'
+                                : text;
+                            final reactions =
+                                (data['reactions'] as Map<String, dynamic>?) ??
+                                {};
+                            final isEdited = data['edited'] == true;
+                            final isPinnedMsg = pinnedMessageId == doc.id;
+
+                            // Group reactions by emoji so identical reactions
+                            // from different people collapse into one chip
+                            // with a count, instead of one chip per person.
+                            final Map<String, int> reactionCounts = {};
+                            bool iReacted = false;
+                            String? myReaction;
+                            reactions.forEach((uid, emoji) {
+                              reactionCounts[emoji as String] =
+                                  (reactionCounts[emoji] ?? 0) + 1;
+                              if (uid == _currentUserId) {
+                                iReacted = true;
+                                myReaction = emoji;
+                              }
+                            });
+
+                            return GestureDetector(
+                              onLongPress: isDeleted
+                                  ? null
+                                  : () => _showMessageActions(
+                                      messageId: doc.id,
+                                      isMine: isMine,
+                                      text: replyActionText,
+                                      senderName: isMine
+                                          ? 'You'
+                                          : widget.otherUserName,
+                                      isImage: imageBytes != null,
+                                      isPinned: isPinnedMsg,
+                                    ),
+                              onDoubleTap: isDeleted
+                                  ? null
+                                  : () => _toggleReaction(doc.id, '❤️'),
+                              child: ChatMessageBubble(
+                                isMine: isMine,
+                                isDeleted: isDeleted,
+                                text: text,
+                                imageBytes: imageBytes,
+                                replyToText: replyToText,
+                                replyToSenderName: replyToSenderName,
+                                sentAt: sentAt,
+                                isEdited: isEdited,
+                                isRead: isRead,
+                                reactionCounts: reactionCounts,
+                                iReacted: iReacted,
+                                myReaction: myReaction,
+                                onToggleReaction: (emoji) =>
+                                    _toggleReaction(doc.id, emoji),
+                              ),
+                            );
+                          },
                         );
                       },
-                    );
-                  },
                     );
                   },
                 ),
               ),
             ),
             if (_editingMessageId != null)
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.fieldFill,
-                  border: Border(
-                    top: BorderSide(color: AppColors.fieldBorder),
-                    left: BorderSide(color: AppColors.accent, width: 3),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.edit_outlined, size: 16, color: AppColors.accent),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Editing message',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primaryDark,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.close, size: 18, color: Colors.grey),
-                      onPressed: _cancelEditing,
-                    ),
-                  ],
-                ),
-              )
+              ChatEditBanner(onCancel: _cancelEditing)
             else if (_replyingToText != null)
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.fieldFill,
-                  border: Border(
-                    top: BorderSide(color: AppColors.fieldBorder),
-                    left: BorderSide(color: AppColors.primary, width: 3),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Replying to ${_replyingToSenderName ?? ''}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                          Text(
-                            _replyingToText!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 13, color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.close, size: 18, color: Colors.grey),
-                      onPressed: _cancelReply,
-                    ),
-                  ],
-                ),
+              ChatReplyBanner(
+                senderName: _replyingToSenderName ?? '',
+                text: _replyingToText!,
+                onCancel: _cancelReply,
               ),
             StreamBuilder<DocumentSnapshot>(
               stream: _myDocStream,
               builder: (context, mySnap) {
                 final myData = mySnap.data?.data() as Map<String, dynamic>?;
-                final blockedList = List<String>.from(myData?['blockedUsers'] ?? []);
+                final blockedList = List<String>.from(
+                  myData?['blockedUsers'] ?? [],
+                );
                 final iBlockedThem = blockedList.contains(widget.otherUserId);
 
                 if (iBlockedThem) {
-                  return Container(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      border: Border(top: BorderSide(color: AppColors.fieldBorder)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.block, size: 18, color: Colors.redAccent),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'You blocked ${widget.otherUserName}. Unblock from their profile to send messages.',
-                            style: TextStyle(color: Colors.grey, fontSize: 12.5),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
+                  return ChatBlockedBanner(otherUserName: widget.otherUserName);
                 }
 
-                return Container(
-              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                border: Border(top: BorderSide(color: AppColors.fieldBorder)),
-              ),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: _isUploadingImage
-                        ? SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                                color: AppColors.primary, strokeWidth: 2),
-                          )
-                        : Icon(Icons.image_outlined, color: AppColors.primary),
-                    tooltip: 'Send a photo',
-                    onPressed: _isUploadingImage ? null : _pickAndSendImage,
-                  ),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _messageController,
-                      showCursor: true,
-                      minLines: 1,
-                      maxLines: 4,
-                      onTap: _showKeyboardNow,
-                      style: TextStyle(color: AppColors.primaryDark),
-                      decoration: InputDecoration(
-                        hintText: 'Type a message...',
-                        filled: true,
-                        fillColor: AppColors.fieldFill,
-                        contentPadding: EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
-                          borderSide: BorderSide(color: AppColors.fieldBorder),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
-                          borderSide: BorderSide(color: AppColors.fieldBorder),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
-                          borderSide:
-                              BorderSide(color: AppColors.primary, width: 1.5),
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  CircleAvatar(
-                    radius: 24,
-                    backgroundColor: AppColors.primary,
-                    child: IconButton(
-                      icon: _isSending
-                          ? SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 2),
-                            )
-                          : Icon(_editingMessageId != null ? Icons.check : Icons.send,
-                              color: Colors.white, size: 20),
-                      onPressed: _isSending ? null : _sendMessage,
-                    ),
-                  ),
-                ],
-              ),
+                return ChatComposer(
+                  controller: _messageController,
+                  isUploadingImage: _isUploadingImage,
+                  isSending: _isSending,
+                  isEditing: _editingMessageId != null,
+                  onPickImage: _pickAndSendImage,
+                  onSend: _sendMessage,
+                  onTapField: _showKeyboardNow,
                 );
               },
             ),
@@ -1346,136 +1098,6 @@ class _ChatScreenState extends State<ChatScreen> {
                 onDone: _hideKeyboard,
               ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// All photos shared in this chat, newest first, in a grid — tapping one
-/// opens it full-screen. Reuses the same messages subcollection instead of
-/// a separate media index, since a single chat's photo count is small
-/// enough to filter client-side.
-class _ChatMediaGalleryScreen extends StatelessWidget {
-  final String chatId;
-
-  const _ChatMediaGalleryScreen({required this.chatId});
-
-  @override
-  Widget build(BuildContext context) {
-    final stream = FirebaseFirestore.instance
-        .collection('chats')
-        .doc(chatId)
-        .collection('messages')
-        .orderBy('sentAt', descending: true)
-        .snapshots();
-
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: buildAppBar(title: 'Shared Photos'),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: stream,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator(color: AppColors.primary));
-          }
-
-          final imageDocs = (snapshot.data?.docs ?? []).where((doc) {
-            final data = doc.data() as Map<String, dynamic>;
-            if (data['deleted'] == true) return false;
-            final img = data['imageBase64'] as String?;
-            return img != null && img.isNotEmpty;
-          }).toList();
-
-          if (imageDocs.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.image_outlined,
-                        size: 56, color: AppColors.primary.withValues(alpha: 0.3)),
-                    SizedBox(height: 12),
-                    Text('No photos shared yet',
-                        style: TextStyle(color: Colors.grey, fontSize: 14)),
-                  ],
-                ),
-              ),
-            );
-          }
-
-          return GridView.builder(
-            padding: EdgeInsets.all(10),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 6,
-              mainAxisSpacing: 6,
-            ),
-            itemCount: imageDocs.length,
-            itemBuilder: (context, index) {
-              final data = imageDocs[index].data() as Map<String, dynamic>;
-              Uint8List? bytes;
-              try {
-                bytes = base64Decode(data['imageBase64'] as String);
-              } catch (_) {
-                bytes = null;
-              }
-              if (bytes == null) {
-                return ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    color: AppColors.fieldFill,
-                    child: Icon(Icons.broken_image_outlined, color: Colors.grey),
-                  ),
-                );
-              }
-              final imgBytes = bytes;
-              return GestureDetector(
-                onTap: () => Navigator.push(
-                  context,
-                  slideRoute(_FullscreenImageViewer(imageBytes: imgBytes)),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.memory(imgBytes, fit: BoxFit.cover),
-                ),
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
-}
-
-/// Full-screen, pinch-to-zoom viewer opened by tapping an image bubble.
-class _FullscreenImageViewer extends StatelessWidget {
-  final Uint8List imageBytes;
-
-  const _FullscreenImageViewer({required this.imageBytes});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
-      body: Center(
-        child: InteractiveViewer(
-          minScale: 0.5,
-          maxScale: 4,
-          child: Image.memory(
-            imageBytes,
-            errorBuilder: (context, error, stack) => Icon(
-              Icons.broken_image_outlined,
-              color: Colors.white54,
-              size: 64,
-            ),
-          ),
         ),
       ),
     );

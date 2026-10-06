@@ -274,7 +274,7 @@ class _AdminChatReaderScreenState extends State<AdminChatReaderScreen> {
                 return ListView.separated(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                   itemCount: filtered.length + (hitLimit ? 1 : 0),
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (context, index) {
                     if (index == filtered.length) {
                       return Padding(
@@ -712,7 +712,7 @@ class _MessageBubble extends StatelessWidget {
                         width: 200,
                         height: 200,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const SizedBox(
+                        errorBuilder: (_, _, _) => const SizedBox(
                           width: 200,
                           height: 200,
                           child: Center(child: Icon(Icons.broken_image_outlined)),
