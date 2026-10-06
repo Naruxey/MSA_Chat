@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'app_notify.dart';
+import 'change_password_dialog.dart';
 import 'main.dart'
     show
         AppColors,
@@ -265,6 +266,23 @@ class _ProfileFormState extends State<ProfileForm> with RouteAware {
                       if (_userData != null) _readOnlyInfo(),
                       SizedBox(height: 16),
                       _darkModeToggle(),
+                      SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: () => showChangePasswordDialog(context),
+                        icon: Icon(Icons.lock_reset_outlined),
+                        label: Text(
+                          'Change Password',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          side: BorderSide(color: AppColors.primary),
+                          minimumSize: Size(double.infinity, 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
                       SizedBox(height: 12),
                       ElevatedButton(
                         onPressed: _saving ? null : _save,
